@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Item Browser — Refined</title>
+
+<!-- Your data files must be present -->
+<script src="data/items.js" defer></script>
+<script src="data/obtainmentMethods.js" defer></script>
+<script src="data/trivia.js" defer></script>
+<script src="data/labels.js" defer></script>
+
+<style>
+  :root{
+    --bg:#f3f6f8;
+    --card:#ffffff;
+    --muted:#7f8b95;
+    --accent: rgba(0,0,0,0.06);
+    --radius:14px;
+    --gap:18px;
+    --sidebar-w:280px;
+    --ui-gap:18px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background: linear-gradient(180deg,#f7f9fb 0%, #f3f6f8 100%);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    display:flex;
+    min-height:100vh;
+    font-size:14px;
+  }
+
+  /* App layout */
+  .wrap{
+    width:100%;
+    max-width:1300px;
+    margin:auto;
+    padding:20px;
+    display:grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    gap:var(--ui-gap);
+    align-items:start;
+  }
+
+  /* Sidebar */
+  aside.sidebar{
+    background:var(--card);
+    border-radius:calc(var(--radius) + 6px);
+    padding:18px;
+    box-shadow: 0 12px 30px rgba(12,18,28,0.06);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    position:relative;
+    min-height:120px;
+    transition: transform .32s cubic-bezier(.2,.9,.25,1), opacity .28s;
+  }
+  aside.sidebar.hidden { transform: translateY(-14px) scale(.995); opacity:.96; }
+
+  .brand{display:flex;gap:12px;align-items:center}
+  .mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(180deg,#fff,#fbfdff); display:grid;place-items:center;font-weight:700;color:var(--muted); border:1px solid rgba(0,0,0,0.04)}
+  .brand h1{margin:0;font-size:15px}
+  .brand p{margin:0;font-size:12px;color:var(--muted)}
+
+  /* Top search large box (moved to top of content area) */
+  main.content {
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    min-height:60vh;
+  }
+
+  .top-search {
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .search-box{
+    flex:1;
+    background:var(--card);
+    border-radius:18px;
+    padding:18px;
+    box-shadow: 0 14px 30px rgba(16,24,40,0.04);
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .search-box input{
+    border:0;outline:0;font-size:16px;width:100%;
+    background:transparent;padding:6px 0;
+  }
+  .search-meta{min-width:120px;text-align:right;color:var(--muted);font-size:13px}
+
+  /* categories inside sidebar */
+  .categories{display:grid;gap:8px;margin-top:6px}
+  .cat{padding:10px;border-radius:12px;cursor:pointer;font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px;border:1px solid transparent}
+  .cat.active{background:linear-gradient(180deg,#fff,#fbfdff);color:#091018;font-weight:600;border-color:rgba(0,0,0,0.03)}
+
+  /* results grid */
+  .results {
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap:14px;
+  }
+
+  .card{
+    background:var(--card);
+    border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;
+    box-shadow: 0 12px 28px rgba(12,18,28,0.06);
+    cursor:pointer;transition:transform .18s, box-shadow .18s;
+    min-height:80px;
+  }
+  .card:focus{outline:2px solid rgba(0,0,0,0.05)}
+  .card:hover{transform:translateY(-6px)}
+  .thumb{width:72px;height:72px;border-radius:12px;background:var(--accent);overflow:hidden;border:1px solid rgba(0,0,0,0.035);flex:0 0 72px}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .card .info{flex:1;min-width:0}
+  .card .title{font-weight:700;font-size:15px;margin:0}
+  .card .subtitle{font-size:13px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* item page (full content area) */
+  .page{
+    background:var(--card);
+    border-radius:14px;padding:22px;
+    box-shadow: 0 20px 48px rgba(12,18,28,0.08);
+    transition: transform .36s, opacity .36s;
+  }
+  .page.head{
+    display:flex;gap:18px;align-items:center;
+  }
+  .page .big-thumb{width:120px;height:120px;border-radius:16px;overflow:hidden;background:var(--accent);border:1px solid rgba(0,0,0,0.03)}
+  .page h2{margin:0;font-size:20px}
+  .muted{color:var(--muted)}
+
+  /* wiki-style table */
+  .props{margin-top:16px;border-radius:10px;border:1px solid rgba(0,0,0,0.04);overflow:hidden}
+  .props table{width:100%;border-collapse:collapse}
+  .props tr{background:linear-gradient(180deg,#fff,#fbfdff)}
+  .props tr:nth-child(even){background:linear-gradient(180deg,#fbfcfd,#fff)}
+  .props th, .props td{padding:10px 14px;text-align:left;border-bottom:1px solid rgba(0,0,0,0.03);vertical-align:top}
+  .props th{width:220px;color:var(--muted);font-weight:600;font-size:13px}
+  .props td{font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px}
+
+  .sections{display:grid;gap:12px;margin-top:14px}
+  .section{padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.03);background:linear-gradient(180deg,#fff,#fbfdff)}
+  .section h3{margin:0 0 8px;font-size:14px}
+
+  .controls{display:flex;gap:8px;align-items:center;margin-left:auto}
+  .btn{padding:8px 12px;border-radius:10px;border:0;background:transparent;cursor:pointer;color:var(--muted)}
+  .btn.primary{background:linear-gradient(180deg,#091018,#0f1720);color:white}
+
+  .empty{padding:42px;border-radius:12px;background:linear-gradient(180deg,#fff,#fbfdff);text-align:center;color:var(--muted)}
+
+  /* overlay-like full content effect when an item is open */
+  .content.page-open{ /* when an item is open, make it feel like a new page */
+    transition: all .36s ease;
+  }
+
+  /* responsive */
+  @media (max-width:980px){
+    .wrap{grid-template-columns: 1fr; padding:14px}
+    aside.sidebar{position:fixed;left:14px;top:14px;right:14px;z-index:80}
+    main.content{margin-top:110px}
+    .props th{width:40%}
+    .page.head{flex-direction:column;align-items:center;text-align:center}
+    .page .big-thumb{width:140px;height:140px}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Categories">
+    <div class="brand"><div class="mark">IG</div><div><h1>Item Browser</h1><p style="margin:0;font-size:12px;color:var(--muted)">Refined • Wiki</p></div></div>
+    <div class="categories" id="categories"></div>
+    <div class="sidebar-footer"><div>Results: <strong id="count">0</strong></div><div style="display:flex;gap:8px"><button id="toggleSidebar" title="Toggle" aria-label="Toggle">☰</button><button id="clearBtn" aria-label="Clear">✕</button></div></div>
+  </aside>
+
+  <main class="content" id="content" role="main">
+    <div class="top-search">
+      <div class="search-box" role="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="opacity:.6"><path d="M21 21l-4.35-4.35" stroke="#000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="#000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:.6"/></svg>
+        <input id="searchInput" placeholder="Search by ItemID, name or description..." aria-label="Search items" autocomplete="off" />
+        <div class="search-meta" id="currentCatLabel">All</div>
+      </div>
+    </div>
+
+    <div id="resultsArea">
+      <div id="results" class="results" aria-live="polite"></div>
+      <div id="empty" class="empty" style="display:none">No results. Try itemID, name, or a word from the description.</div>
+    </div>
+
+    <div id="itemViewHolder" style="display:none"></div>
+  </main>
+</div>
+
+<script>
+let mergeArr = (keys, values) => Object.fromEntries(keys.map((key, i) => [key, values[i]])); // [A,C] + [B,D] -> {A: B, C: D} very shrimple stuff
+/* ---- Configuration maps ---- */
+const ITEM_TYPE_MAP = {
+  0: 'Miscellaneous Items', // (Doll, Fish Bait, Black Syrup, Music Card, Tags, Dancing Star, Lottery Ticket, Fusion, Fragment, Globe, Orbs)
+  1: 'Rice Balls',2:'Bread',3:'Candy',4:'Milk',5:'Juice',6:'Burgers',7:'Ramen',8:'Sushi',9:'Chinese Food',
+  11:'Vegetables',12:'Meat',13:'Fish',14:'Curry',15:'Sweets',16:'Oden',17:'Soba Noodles',18:'Snacks',19:'Chocobars',
+  20: 'Fish', 21: 'Bugs', 30: 'Equipabble Items', 40: 'Key Items', 42: 'Bicycles',
+  50:'Talismans',51:'Medicine',52:'Getaway Plush (Flee Item)',53:'Staminums',54:'Exporbs',55:'Move Level Books',56:'Attitude Books',57:'Loaf Books',
+  60:'Red Box',70:'Coins', 71: 'Select-A-Coin', 80: 'Next HarMEOWny Picture', 90: 'Stamp Card'
+};
+
+const INVENTORY_SORT_MAP = {
+  10:'Food',20:'Item',30:'Creature',40:'Soul',50:'Equipment',60:'Key Item',61:'Key Item with Image'
+};
+
+const EFFECT_TYPE_MAP = {
+  0: 'N/A',
+  1: 'Runs Special Effect: X (BtlCommandID)',
+  2: 'Heals X HP.',
+  3: 'Raise XP by X.',
+  4: 'Raise Attack/Technique/Soultimate level by 1 (X: 1=Attack, 2=Technique, 3=Soultimate).',
+  5: 'Edits a Yo-kai\'s Move Attitude (NOT loaf attitude).',
+  6: 'Infinite Stamina for X duration.',
+  7: 'Raise Attitude Points by X.'
+};
+
+/* ---- Category config ---- */
+const CATEGORIES = [
+  { id: 'equipment', label: 'Equipment', varname: 'equipment' },
+  { id: 'souls', label: 'Souls', varname: 'souls' },
+  { id: 'consume', label: 'Consumables', varname: 'consume' },
+  { id: 'important', label: 'Key Items', varname: 'important' },
+  { id: 'critters', label: 'Critters', varname: 'critters' },
+  { id: 'all', label: 'All', varname: 'all' }
+];
+
+/* ---- DOM refs ---- */
+const categoriesEl = document.getElementById('categories');
+const resultsEl = document.getElementById('results');
+const searchInput = document.getElementById('searchInput');
+const countEl = document.getElementById('count');
+const itemViewHolder = document.getElementById('itemViewHolder');
+const emptyEl = document.getElementById('empty');
+const sidebar = document.getElementById('sidebar');
+const toggleSidebarBtn = document.getElementById('toggleSidebar');
+const clearBtn = document.getElementById('clearBtn');
+const currentCatLabel = document.getElementById('currentCatLabel');
+const resultsArea = document.getElementById('resultsArea');
+
+let state = { category:'all', query:'', results:[], focusedIndex:-1, openItemIndex:-1 };
+
+/* ---- Utility helpers ---- */
+const u32 = id => (Number(id) >>> 0).toString();
+const namesMap = () => (window.names || {});
+const descMap = () => (window.desc || {});
+
+function getNameFor(itemId, itemData){
+  const names = namesMap();
+  if (itemData && 'NounTextID' in itemData && names[String(itemData.NounTextID)]) return names[String(itemData.NounTextID)];
+  if (names[String(itemId)]) return names[String(itemId)];
+  return null;
+}
+function getDescriptionText(itemData){
+  if (!itemData || !('Description' in itemData)) return null;
+  const d = itemData.Description;
+  if (d == null) return null;
+  const dm = descMap();
+  if (dm[String(d)]) return dm[String(d)];
+  return String(d);
+}
+
+/* Levenshtein distance (classic DP) */
+function levenshtein(a,b){
+  a = String(a || ''); b = String(b || '');
+  if (a === b) return 0;
+  const al=a.length, bl=b.length;
+  if (al===0) return bl;
+  if (bl===0) return al;
+  const v0 = new Array(bl+1), v1 = new Array(bl+1);
+  for(let j=0;j<=bl;j++) v0[j]=j;
+  for(let i=0;i<al;i++){
+    v1[0]=i+1;
+    const ai = a[i];
+    for(let j=0;j<bl;j++){
+      const cost = ai === b[j] ? 0 : 1;
+      v1[j+1] = Math.min(v1[j]+1, v0[j+1]+1, v0[j]+cost);
+    }
+    for(let j=0;j<=bl;j++) v0[j]=v1[j];
+  }
+  return v1[bl];
+}
+
+/* subsequence test (fast fuzzy) */
+function isSubsequence(needle, hay){
+  let i=0,j=0;
+  while(i<needle.length && j<hay.length){
+    if (needle[i] === hay[j]) i++;
+    j++;
+  }
+  return i===needle.length;
+}
+
+/* scoring: lower is better.
+   use exact/id/name bonuses, subsequence bonus, and normalized levenshtein distance as fallback.
+*/
+function computeScore(candidate, q){
+  if (!q) return 9999;
+  const ql = q.toLowerCase();
+  const id = String(candidate.id);
+  const name = (candidate.name||'').toLowerCase();
+  const desc = (candidate.desc||'').toLowerCase();
+
+  if (id === ql) return -100000;
+  if (name === ql) return -90000;
+  if (name.startsWith(ql)) return -50000;
+  if (id.startsWith(ql)) return -40000;
+
+  // subsequence (cheap) - good match
+  if (isSubsequence(ql, name) && name.length) return 10 + name.indexOf(ql || '') ;
+  if (isSubsequence(ql, id)) return 20 + id.indexOf(ql || '');
+
+  // try lev distance on name or id or desc (normalize by length)
+  const candStr = (name || id || desc).slice(0, 120);
+  const d = levenshtein(ql, candStr);
+  const norm = d / Math.max(1, Math.max(ql.length, candStr.length));
+  // convert to a score where smaller is better: norm * 1000 + small bias
+  return Math.floor(norm * 1000) + 200;
+}
+
+/* gather items for a category */
+function gatherCandidates(cat){
+  const list = [];
+  if (cat === 'all'){
+    for (const c of CATEGORIES){
+      if (c.id === 'all') continue;
+      const obj = window[c.varname] || {};
+      for (const k of Object.keys(obj)) list.push({ id:k, data:obj[k], category:c.id });
+    }
+  } else {
+    const mapping = CATEGORIES.find(x => x.id === cat);
+    const obj = mapping ? (window[mapping.varname] || {}) : {};
+    for (const k of Object.keys(obj)) list.push({ id:k, data:obj[k], category:mapping.id });
+  }
+  // attach name/desc derived
+  list.forEach(it => { it.name = getNameFor(it.id, it.data) || ''; it.desc = getDescriptionText(it.data) || ''; });
+  return list;
+}
+
+/* ---- search & render ---- */
+function performSearch(){
+  // preserve caret & selection when re-rendering
+  const selStart = searchInput.selectionStart, selEnd = searchInput.selectionEnd;
+  const qRaw = (searchInput.value || '').trim();
+  state.query = qRaw;
+  const q = qRaw.toLowerCase();
+  const raw = gatherCandidates(state.category);
+  let results = [];
+  if (!q){
+    results = raw.map(it => ({ ...it, score:9999 }));
+    results.sort((a,b)=> (Number(a.id)||0) - (Number(b.id)||0));
+  } else {
+    for (const it of raw){
+      const s = computeScore(it, q);
+      if (s !== null && s !== undefined) results.push({ ...it, score:s });
+    }
+    results.sort((a,b)=> a.score - b.score || ((a.name?0:1)-(b.name?0:1)) || ((Number(a.id)||0)-(Number(b.id)||0)));
+  }
+  state.results = results;
+  // do not change focusedIndex while typing. If previously no focus, set -1.
+  if (state.focusedIndex < 0 && results.length) state.focusedIndex = -1;
+  renderResults();
+  // restore focus to input (prevent it from being lost) and caret
+  try{
+    searchInput.focus();
+    if (typeof selStart === 'number' && typeof selEnd === 'number') searchInput.setSelectionRange(selStart, selEnd);
+  }catch(e){}
+}
+
+/* render categories */
+function renderCategories(){
+  categoriesEl.innerHTML = '';
+  for (const cat of CATEGORIES){
+    const el = document.createElement('div');
+    el.className = 'cat' + (state.category === cat.id ? ' active' : '');
+    el.tabIndex = 0;
+    el.textContent = cat.label;
+    el.addEventListener('click', () => {
+      // if an item is open, clicking category should back you out of it (close item view)
+      if (itemViewHolder.style.display === 'block') closeItem();
+      state.category = cat.id;
+      currentCatLabel.textContent = cat.label;
+      renderCategories();
+      performSearch();
+      searchInput.focus();
+    });
+    el.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') el.click(); });
+    categoriesEl.appendChild(el);
+  }
+}
+
+/* make result card */
+function makeCard(item, idx){
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.tabIndex = 0;
+  el.dataset.index = idx;
+
+  const thumb = document.createElement('div'); thumb.className='thumb';
+  const img = document.createElement('img');
+  img.decoding='async'; img.src = `data/assets/${u32(item.id)}.png`;
+  img.onerror = () => { img.onerror = null; img.src = 'data/assets/default.png'; };
+  thumb.appendChild(img);
+
+  const info = document.createElement('div'); info.className='info';
+  const title = document.createElement('div'); title.className='title';
+  title.textContent = item.name || item.id;
+  const subtitle = document.createElement('div'); subtitle.className='subtitle';
+  subtitle.textContent = item.desc || (item.data && item.data.Description ? String(item.data.Description) : item.category);
+
+  info.appendChild(title); info.appendChild(subtitle);
+  el.appendChild(thumb); el.appendChild(info);
+
+  el.addEventListener('click', ()=> openItemAtIndex(idx));
+  el.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') openItemAtIndex(idx); });
+
+  return el;
+}
+
+/* render results */
+function renderResults(){
+  resultsEl.innerHTML = '';
+  const list = state.results;
+  if (!list.length){ emptyEl.style.display = 'block'; }
+  else {
+    emptyEl.style.display = 'none';
+    list.forEach((item, idx) => {
+      const card = makeCard(item, idx);
+      if (idx === state.focusedIndex) card.classList.add('focused');
+      resultsEl.appendChild(card);
+    });
+  }
+  countEl.textContent = list.length;
+}
+
+/* focus management: arrow navigation (only when user presses keys) */
+function moveFocus(delta){
+  if (!state.results || !state.results.length) return;
+  if (state.focusedIndex === -1){
+    state.focusedIndex = delta > 0 ? 0 : state.results.length - 1;
+  } else {
+    state.focusedIndex = Math.max(0, Math.min(state.results.length - 1, state.focusedIndex + delta));
+  }
+  // visually focus the card but do not blur the search input (we want arrow nav to move selection but keep typing)
+  const cards = resultsEl.querySelectorAll('.card');
+  cards.forEach(c => c.classList.remove('focused'));
+  const el = cards[state.focusedIndex];
+  if (el) el.classList.add('focused');
+  // ensure visible
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+/* ---- item page rendering ---- */
+/* Format money: rule provided: ¥100 = ₩100 = $1.00 = £1.00 = €1.00 */
+function formatMoneyFromYen(yen){
+  const y = Number(yen) || 0;
+  const krw = y;
+  const usd = (y / 100).toFixed(2);
+  const gbp = (y / 100).toFixed(2);
+  const eur = (y / 100).toFixed(2);
+  return `¥${y.toLocaleString()} = ₩${krw.toLocaleString()} = $${usd} = £${gbp} = €${eur}`;
+}
+
+/* format values for table according to key names / maps
+   - Only format keys that exist in original object and keep original order.
+*/
+function formatValueForKey(key, value, dataObj){
+  if (value === null || value === undefined) return '—';
+  // specific keys
+  if (/Price|SellPrice|DefaultBuyPrice/i.test(key) && !isNaN(Number(value))) {
+    return formatMoneyFromYen(Number(value));
+  }
+  if (/ItemType/i.test(key)) {
+    const t = ITEM_TYPE_MAP[Number(value)];
+    return t ? `${t} (${value})` : String(value);
+  }
+  if (/InventorySort/i.test(key)) {
+    const s = INVENTORY_SORT_MAP[Number(value)];
+    return s ? `${s} (${value})` : String(value);
+  }
+  // EffectAType / EffectBType
+  if (/(EffectA|EffectB)/i.test(key)) {
+    const typ = Number(value);
+    const map = EFFECT_TYPE_MAP[typ] || `Type ${typ}`;
+    // find associated value key (EffectAValue or EffectBValue)
+    const which = /A/i.test(key) ? 'A' : 'B';
+    const valKey = `Effect${which}Value`;
+    const val = (dataObj && (valKey in dataObj)) ? dataObj[valKey] : null;
+    if (val != null) {
+      // craft readable substitution
+      if (typ === 1) return `Runs ${val} (BtlCommandID).`;
+      if (typ === 2) return `Heals ${val} HP.`;
+      if (typ === 3) return `Raises EXP by ${val}EXP.`;
+      if (typ === 4) return `Raise ${val===3?'Soultimate':val===2?'Technique':'Attack'} level by 1. (${map}:${val})`;
+      if (typ === 6) return `Infinite Stamina for ${val} seconds.`;
+      if (typ === 7) return `Raise Attitude Points by ${val}AP.`;
+      // fallback
+      return `${map} (${val})`;
+    }
+    return map;
+  }
+
+  // booleans/flags
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if ((value === 0 || value === 1) && /CanBe|Is|Has|Fusable/i.test(key)) return value ? 'Yes' : 'No';
+  // numeric buffs etc
+  if (/Buff|DEFBuff|STRBuff|SPRBuff|SPDBuff|InventorySort|ItemNum|GlobalItemIndex|CarryCap|InventorySort/i.test(key)) {
+    const n = Number(value);
+    if (/Buff/i.test(key) && n > 0) return '+' + n;
+    return n.toLocaleString();
+  }
+  // default
+  return String(value);
+}
+
+/* make props table keeping original key order and only keys present */
+function makePropsTable(item){
+  const data = item.data || {};
+  const keys = Object.keys(data); // preserves insertion order in JS
+  const table = document.createElement('table');
+  const tbody = document.createElement('tbody');
+
+  keys.forEach(k => {
+    if (k === 'NounTextID') return; // hide raw NounTextID :<
+    if(k == 'EffectAValue') return; // hide raw numebrs over formatted values in EffectA/BType :0
+    if(k == 'EffectBValue') return; // hide raw numebrs over formatted values in EffectA/BType :P
+    console.log("k")
+    console.log(k)
+    console.log(data[k])
+    if(k == 'OnConsumptionText' && data[k] == 0) return; // if there's no consumption text i.e. for items that cant be fed - hide it :}
+    if(k == 'OnAllyText' && data[k] == 0) return; // same for these :]
+    if(k == 'OnFoeText' && data[k] == 0) return;
+    if(k == 'SkillA' && data[k] == 0) return;
+    if(k == 'SkillB' && data[k] == 0) return;
+    if(k == 'BuffText' && data[k] == 0) return;
+    if(k == 'DebuffText' && data[k] == 0) return;
+
+    if((k == 'EffectAType' || k == 'EffectA') && data[k] == 0) return;
+    if((k == 'EffectBType' || k == 'EffectB') && data[k] == 0) return;
+    if(k == 'EffectAType') k = 'EffectA' // qol: rename to an appropriate name due to the formatting applied
+    if(k == 'EffectBType') k = 'EffectB' // qol: rename to an appropriate name due to the formatting applied
+    const tr = document.createElement('tr');
+    const th = document.createElement('th'); th.textContent = k;
+    if(k == 'EffectA') k = 'EffectAType' // revert; this is the most NASTY solution but idc 
+    if(k == 'EffectB') k = 'EffectBType'
+    const td = document.createElement('td'); 
+    if (k === 'Description' || k == 'InvMenuText' || k == 'OnAllyText') {
+      const descText = getDescriptionText(data);
+      td.textContent = descText || formatValueForKey(k, data[k], data);
+    } else {
+      td.textContent = formatValueForKey(k, data[k], data);
+    }
+
+    tr.appendChild(th); tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+
+  // always add ItemID row at bottom
+  const idRow = document.createElement('tr');
+  const thId = document.createElement('th'); thId.textContent = 'ItemID';
+  const tdId = document.createElement('td'); tdId.textContent = item.id;
+  idRow.appendChild(thId); idRow.appendChild(tdId);
+  tbody.appendChild(idRow);
+
+  table.appendChild(tbody);
+  const wrap = document.createElement('div'); wrap.className='props'; wrap.appendChild(table);
+  return wrap;
+}
+
+/* open item */
+function openItemAtIndex(idx){
+  if (idx < 0 || idx >= state.results.length) return;
+  state.openItemIndex = idx;
+  const it = state.results[idx];
+  // hide results area, show item page, collapse sidebar for mobile
+  resultsArea.style.display = 'none';
+  itemViewHolder.style.display = 'block';
+  sidebar.classList.add('hidden');
+
+  const container = document.createElement('div'); container.className='page';
+  const header = document.createElement('div'); header.className='head';
+  const thumb = document.createElement('div'); thumb.className='big-thumb';
+  const img = document.createElement('img'); img.decoding='async';
+  img.src = `data/assets/${u32(it.id)}.png`; img.onerror = ()=>{ img.onerror=null; img.src='data/assets/default.png'; };
+  img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover';
+  thumb.appendChild(img);
+
+  const titleWrap = document.createElement('div');
+  const title = document.createElement('h2'); title.textContent = it.name || it.id;
+  const meta = document.createElement('div'); meta.className='muted'; meta.textContent = `${it.category} • ${Object.keys(it.data||{}).length} params`;
+  const controls = document.createElement('div'); controls.style.marginTop='8px';
+  const backBtn = document.createElement('button'); backBtn.textContent='← Back'; backBtn.style.marginRight='8px';
+  backBtn.addEventListener('click', closeItem);
+  const prevBtn = document.createElement('button'); prevBtn.textContent='Prev'; prevBtn.style.marginRight='6px';
+  const nextBtn = document.createElement('button'); nextBtn.textContent='Next';
+  prevBtn.addEventListener('click', ()=>openItemAtIndex(Math.max(0, state.openItemIndex - 1)));
+  nextBtn.addEventListener('click', ()=>openItemAtIndex(Math.min(state.results.length - 1, state.openItemIndex + 1)));
+  controls.appendChild(prevBtn); controls.appendChild(nextBtn); controls.appendChild(backBtn);
+
+  titleWrap.appendChild(title); titleWrap.appendChild(meta); titleWrap.appendChild(controls);
+  header.appendChild(thumb); header.appendChild(titleWrap);
+  container.appendChild(header);
+
+  // props table
+  container.appendChild(makePropsTable(it));
+
+  // sections
+  const sections = document.createElement('div'); sections.className='sections';
+  const obtain = document.createElement('div'); obtain.className='section';
+  const h1 = document.createElement('h3'); h1.textContent='Obtainment Methods'; obtain.appendChild(h1);
+  const om = (window.obtainmentMethods && window.obtainmentMethods[it.id]) || [];
+  if (om.length){ const ul=document.createElement('ul'); om.forEach(s=>{const li=document.createElement('li');li.textContent=s;ul.appendChild(li)}); obtain.appendChild(ul); } else { const p=document.createElement('div'); p.className='muted'; p.textContent='—'; obtain.appendChild(p); }
+
+  const trivia = document.createElement('div'); trivia.className='section';
+  const h2 = document.createElement('h3'); h2.textContent='Trivia'; trivia.appendChild(h2);
+  const tv = (window.trivia && window.trivia[it.id]) || [];
+  if (tv.length){ const ul=document.createElement('ul'); tv.forEach(s=>{const li=document.createElement('li'); li.textContent=s; ul.appendChild(li)}); trivia.appendChild(ul); } else { const p=document.createElement('div'); p.className='muted'; p.textContent='—'; trivia.appendChild(p); }
+
+  sections.appendChild(obtain); sections.appendChild(trivia);
+  container.appendChild(sections);
+
+  itemViewHolder.innerHTML = ''; itemViewHolder.appendChild(container);
+  container.scrollIntoView({behavior:'smooth', block:'start'});
+  container.tabIndex = -1; container.focus();
+}
+
+/* close item */
+function closeItem(){
+  itemViewHolder.style.display = 'none';
+  itemViewHolder.innerHTML = '';
+  resultsArea.style.display = '';
+  sidebar.classList.remove('hidden');
+  // keep focus in search input (so typing continues)
+  searchInput.focus();
+}
+
+/* ---- keyboard handling ---- */
+document.addEventListener('keydown', (e) => {
+  const open = itemViewHolder.style.display === 'block';
+  // If input is focused and user types characters, don't intercept
+  const activeIsInput = document.activeElement === searchInput;
+  if (open){
+    if (e.key === 'Escape') { closeItem(); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft'){ openItemAtIndex(Math.max(0, state.openItemIndex - 1)); e.preventDefault(); }
+    else if (e.key === 'ArrowRight'){ openItemAtIndex(Math.min(state.results.length - 1, state.openItemIndex + 1)); e.preventDefault(); }
+    return;
+  }
+  // when search input is focused and user types, we should not interfere with arrows when typing numbers/ moving caret.
+  if (activeIsInput){
+    // arrows: allow navigation of results while keeping caret in input
+    if (e.key === 'ArrowDown'){ moveFocus(1); e.preventDefault(); return; }
+    if (e.key === 'ArrowUp'){ moveFocus(-1); e.preventDefault(); return; }
+    if (e.key === 'Enter'){ if (state.focusedIndex >= 0) { openItemAtIndex(state.focusedIndex); e.preventDefault(); } return; }
+    if (e.key === 'Escape'){ if (searchInput.value){ searchInput.value=''; performSearch(); e.preventDefault(); } return; }
+    return; // let typing happen
+  } else {
+    // global shortcuts when not typing
+    if (e.key === 'ArrowDown'){ moveFocus(1); e.preventDefault(); }
+    else if (e.key === 'ArrowUp'){ moveFocus(-1); e.preventDefault(); }
+    else if (e.key === 'Enter'){ if (state.focusedIndex >= 0) openItemAtIndex(state.focusedIndex); e.preventDefault(); }
+    else if (e.key === 'Escape'){ searchInput.focus(); searchInput.select(); e.preventDefault(); }
+  }
+});
+
+/* ---- init & wiring ---- */
+function initUI(){
+  // categories
+  renderCategories();
+  currentCatLabel.textContent = 'All';
+
+  // events
+  searchInput.addEventListener('input', () => { performSearch(); });
+  searchInput.addEventListener('keydown', (e)=>{ if (e.key === 'Escape'){ searchInput.value=''; performSearch(); e.preventDefault(); }});
+  clearBtn.addEventListener('click', ()=>{ searchInput.value=''; performSearch(); searchInput.focus(); });
+  toggleSidebarBtn.addEventListener('click', ()=> sidebar.classList.toggle('hidden'));
+
+  // clicking a category while item open should back you out (already handled in renderCategories)
+  // clicking outside sidebar hides it on mobile
+  document.addEventListener('click', (e)=>{ if (window.matchMedia && window.matchMedia('(max-width:980px)').matches){ if (!sidebar.contains(e.target)) sidebar.classList.add('hidden'); }});
+
+  // click on results container updates focusedIndex
+  resultsEl.addEventListener('click', (e)=>{
+    const card = e.target.closest('.card');
+    if (!card) return;
+    const idx = Number(card.dataset.index);
+    if (!isNaN(idx)) state.focusedIndex = idx;
+  });
+
+  // initial search
+  performSearch();
+}
+
+window.addEventListener('load', ()=>{
+  // ensure global data existers don't crash
+  window.equipment = window.equipment || {};
+  window.souls = window.souls || {};
+  window.consume = window.consume || {};
+  window.important = window.important || {};
+  window.critters = window.critters || {};
+  window.obtainmentMethods = window.obtainmentMethods || {};
+  window.trivia = window.trivia || {};
+  window.names = window.names || {};
+  window.desc = window.desc || {};
+
+  initUI();
+});
+
+/* small debug API */
+window._ib = { search: performSearch, open: openItemAtIndex, close: closeItem, state };
+</script>
+</body>
+</html>

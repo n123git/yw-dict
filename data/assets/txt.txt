@@ -1,2 +1,27 @@
-lorem ipsum dolar sit amet
+Will Include:
+* QRs
+* Events
+* All XQ scripts
+* JP QRs
+* JP Yo-kai Cam Daily Challenges
+* JP Password Text
+* International Password Text
+* Online Participants of the Losing/Winning weekly faction rewards
+* Shops
+* Oneplace (searchable areas), tboxes, ysp (yo-kai spots)
+* Maybe Kabuking Drops
+* Disclousure of Which Scratch Off it belongs to
+
+Does Include:
+* Lottery
+* Yo-kai Drops
+* Yo-kai Cam Milestones
+* International Yo-kai Cam Daily Challenges
+* Music Games
+* International Password Disclousure
+* Quest Rewards
+* Bonus Scenes Rewards
+* Online Title Rank-Up Rewards
+* Online Faction Weekly Highest Scorer Rewards
+* Springdale-Scratch Off Discloure
 - n123git 2025

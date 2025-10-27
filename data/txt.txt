@@ -1,2 +1,16 @@
-hi!
+hi! please ignore this repo!
+<> syntax: <variable:ExampleValue:behaviour> if behaviour is "static" keep it, if it's "translate" translate it
+
+"% chance to be obtained from defeating "
+"x) Can be obtained from a Yo-kai Cam daily challenge requiring the Yo-kai: "
+"x) Can be obtained from the lottery."
+"x) Can be obtained from the Quest: "
+"x) Can be obtained from music games."
+"x) Can be obtained from a Yo-kai Cam daily challenge requiring \"<criteria:Heartful Tribe:static>\" Yo-kai (International)."
+"x) Can be obtained from snapping <num:300:static> Yo-kai with the Yo-kai Cam."
+"x) Can be obtained from a Bonus Scene."
+"Can be obtained from a password (International)."
+"x) Can be obtained from ranking up to title <title:25:static> in online battles."
+"x) Can be obtained from being #<pos:1:static> in your faction this week (online battles)."
+"Can be obtained from the Springdale Scratch-Offs!"
   - n123git 2025
